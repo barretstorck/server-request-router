@@ -1,2 +1,2 @@
-# fork-middleware
-A PSR-15 compliant HTTP middleware that routes requests to other middlewares
+# server-request-router
+A PSR-15 compliant HTTP router and middleware that routes requests to other middlewares
