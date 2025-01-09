@@ -97,4 +97,132 @@ class RouterTest extends TestCase
             message: 'Unexpected Middlewares',
         );
     }
+
+    public static function provideTestHasMethod(): array
+    {
+        return [
+            'GET' => [
+                'request' => new ServerRequest('GET', 'http://localhost'),
+                'expect' => 100,
+            ],
+            'POST' => [
+                'request' => new ServerRequest('POST', 'http://localhost'),
+                'expect' => 101,
+            ],
+            'PUT' => [
+                'request' => new ServerRequest('PUT', 'http://localhost'),
+                'expect' => 101,
+            ],
+            'DELETE' => [
+                'request' => new ServerRequest('DELETE', 'http://localhost'),
+                'expect' => 100,
+            ],
+            'FOOBAR' => [
+                'request' => new ServerRequest('FOOBAR', 'http://localhost'),
+                'expect' => 500,
+            ],
+        ];
+    }
+
+    #[DataProvider('provideTestHasMethod')]
+    public function testHasMethod($request, $expect): void
+    {
+        // Given
+        $router = Router::make()
+            ->branch()
+                ->hasMethod('GET', 'DELETE')
+                ->addMiddleware(new Response(100))
+            ->parent()
+            ->branch()
+                ->hasMethod('/^P/')
+                ->addMiddleware(new Response(101))
+            ->parent()
+            ->addMiddleware(new Response(500));
+
+        // When
+        $response = $router->handle($request);
+
+        // Then
+        $this->assertEquals($expect, $response->getStatusCode());
+    }
+
+    public static function provideTestHasHost(): array
+    {
+        return [
+            'example.com' => [
+                'request' => new ServerRequest('GET', 'http://example.com'),
+                'expect' => 100,
+            ],
+            'microsoft.com' => [
+                'request' => new ServerRequest('GET', 'http://microsoft.com'),
+                'expect' => 100,
+            ],
+            'mozilla.net' => [
+                'request' => new ServerRequest('GET', 'http://mozilla.net'),
+                'expect' => 101,
+            ],
+            'php.net' => [
+                'request' => new ServerRequest('GET', 'http://php.net'),
+                'expect' => 101,
+            ],
+            'google.com' => [
+                'request' => new ServerRequest('GET', 'http://google.com'),
+                'expect' => 500,
+            ],
+        ];
+    }
+
+    #[DataProvider('provideTestHasHost')]
+    public function testHasHost($request, $expect): void
+    {
+        // Given
+        $router = Router::make()
+            ->branch()
+                ->hasHost('example.com', 'microsoft.com')
+                ->addMiddleware(new Response(100))
+            ->parent()
+            ->branch()
+                ->hasHost('/\.net$/')
+                ->addMiddleware(new Response(101))
+            ->parent()
+            ->addMiddleware(new Response(500));
+
+        // When
+        $response = $router->handle($request);
+
+        // Then
+        $this->assertEquals($expect, $response->getStatusCode());
+    }
+
+    public static function provideTestHasBody(): array
+    {
+        return [
+            'Yes' => [
+                'request' => new ServerRequest('GET', 'http://localhost', [], 'Hello world!'),
+                'expect' => 100,
+            ],
+            'No' => [
+                'request' => new ServerRequest('GET', 'http://localhost'),
+                'expect' => 500,
+            ],
+        ];
+    }
+
+    #[DataProvider('provideTestHasBody')]
+    public function testHasBody($request, $expect): void
+    {
+        // Given
+        $router = Router::make()
+            ->branch()
+                ->hasBody()
+                ->addMiddleware(new Response(100))
+            ->parent()
+            ->addMiddleware(new Response(500));
+
+        // When
+        $response = $router->handle($request);
+
+        // Then
+        $this->assertEquals($expect, $response->getStatusCode());
+    }
 }
