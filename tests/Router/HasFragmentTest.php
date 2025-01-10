@@ -10,51 +10,50 @@ use GuzzleHttp\Psr7\Response;
 use Exception;
 
 /**
- * @testdox Router::hasAuthority()
+ * @testdox Router::hasFragment()
  */
-class HasAuthorityTest extends TestCase
+class HasFragmentTest extends TestCase
 {
-    public static function provideTestHasAuthority(): array
+    public static function provideTestHasFragment(): array
     {
         return [
-            'localhost' => [
+            'empty' => [
                 'request' => new ServerRequest('GET', 'http://localhost'),
                 'expect' => 100,
             ],
-            'localhost:80' => [
-                'request' => new ServerRequest('GET', 'http://localhost:80'),
+            'apple' => [
+                'request' => new ServerRequest('GET', 'http://localhost/#apple'),
                 'expect' => 100,
             ],
-            'user@localhost' => [
-                'request' => new ServerRequest('GET', 'http://user@localhost'),
+            'foo' => [
+                'request' => new ServerRequest('GET', 'http://localhost/#foo'),
                 'expect' => 101,
             ],
-            'user@localhost:80' => [
-                'request' => new ServerRequest('GET', 'http://user@localhost:80'),
+            'foobar' => [
+                'request' => new ServerRequest('GET', 'http://localhost/#foobar'),
                 'expect' => 101,
             ],
-            'foo@bar:80' => [
-                'request' => new ServerRequest('GET', 'http://foo@bar:80'),
+            'cat' => [
+                'request' => new ServerRequest('GET', 'http://localhost/#cat'),
                 'expect' => 500,
             ],
         ];
     }
 
     /**
-     * @testdox Router::hasAuthority()
-     * @dataProvider provideTestHasAuthority
+     * @testdox Router::hasFragment()
+     * @dataProvider provideTestHasFragment
      */
-    public function testHasAuthority($request, $expect): void
+    public function testHasFragment($request, $expect): void
     {
         // Given
         $router = Router::make()
             ->branch()
-                ->hasAuthority() // Ensure that no parameters is handled correctly
-                ->hasAuthority('localhost', 'localhost:80')
+                ->hasFragment('', 'apple')
                 ->addMiddleware(new Response(100))
             ->root()
             ->branch()
-                ->hasAuthority('/^user\@/i')
+                ->hasFragment('/^foo/')
                 ->addMiddleware(new Response(101))
             ->root()
             ->addMiddleware(new Response(500));

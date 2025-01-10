@@ -10,51 +10,54 @@ use GuzzleHttp\Psr7\Response;
 use Exception;
 
 /**
- * @testdox Router::hasAuthority()
+ * @testdox Router::hasQuery()
  */
-class HasAuthorityTest extends TestCase
+class HasQueryTest extends TestCase
 {
-    public static function provideTestHasAuthority(): array
+    public static function provideTestHasQuery(): array
     {
         return [
-            'localhost' => [
+            'empty' => [
                 'request' => new ServerRequest('GET', 'http://localhost'),
                 'expect' => 100,
             ],
-            'localhost:80' => [
-                'request' => new ServerRequest('GET', 'http://localhost:80'),
+            'foo=1' => [
+                'request' => new ServerRequest('GET', 'http://localhost?foo=1'),
                 'expect' => 100,
             ],
-            'user@localhost' => [
-                'request' => new ServerRequest('GET', 'http://user@localhost'),
+            'foo=1&bar=2' => [
+                'request' => new ServerRequest('GET', 'http://localhost?foo=1&bar=2'),
                 'expect' => 101,
             ],
-            'user@localhost:80' => [
-                'request' => new ServerRequest('GET', 'http://user@localhost:80'),
+            'fizz=3&buzz=4' => [
+                'request' => new ServerRequest('GET', 'http://localhost?fizz=3&buzz=4'),
+                'expect' => 100,
+            ],
+            'fizz=3&bar=2' => [
+                'request' => new ServerRequest('GET', 'http://localhost?fizz=3&bar=2'),
                 'expect' => 101,
             ],
-            'foo@bar:80' => [
-                'request' => new ServerRequest('GET', 'http://foo@bar:80'),
+            'cat=5' => [
+                'request' => new ServerRequest('GET', 'http://localhost?cat=5'),
                 'expect' => 500,
             ],
         ];
     }
 
     /**
-     * @testdox Router::hasAuthority()
-     * @dataProvider provideTestHasAuthority
+     * @testdox Router::hasQuery()
+     * @dataProvider provideTestHasQuery
      */
-    public function testHasAuthority($request, $expect): void
+    public function testHasQuery($request, $expect): void
     {
         // Given
         $router = Router::make()
             ->branch()
-                ->hasAuthority() // Ensure that no parameters is handled correctly
-                ->hasAuthority('localhost', 'localhost:80')
+                ->hasQuery('', 'foo=1', 'fizz=3&buzz=4')
                 ->addMiddleware(new Response(100))
             ->root()
             ->branch()
-                ->hasAuthority('/^user\@/i')
+                ->hasQuery('/bar=2/')
                 ->addMiddleware(new Response(101))
             ->root()
             ->addMiddleware(new Response(500));

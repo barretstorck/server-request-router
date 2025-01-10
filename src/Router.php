@@ -377,7 +377,7 @@ class Router implements MiddlewareInterface, RequestHandlerInterface
     {
         // Normalize size
         $bytes = max(0, $bytes);
-        return $this->addCheck(function ($request, $bytes) {
+        return $this->addCheck(function ($request) use ($bytes) {
             $body = $request->getBody();
             return $body instanceof StreamInterface && $body->getSize() > $bytes;
         });
@@ -390,7 +390,7 @@ class Router implements MiddlewareInterface, RequestHandlerInterface
     {
         // Normalize size
         $bytes = max(0, $bytes);
-        return $this->addCheck(function ($request, $bytes) {
+        return $this->addCheck(function ($request) use ($bytes) {
             $body = $request->getBody();
             return $body instanceof StreamInterface && $body->getSize() < $bytes;
         });
