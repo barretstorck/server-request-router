@@ -6,6 +6,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Message\StreamInterface;
 use Exception;
 
 /**
@@ -192,24 +193,206 @@ class Router implements MiddlewareInterface, RequestHandlerInterface
     }
 
     /**
+     *
+     */
+    protected static function matchesAny(string $needle, array $haystack): bool
+    {
+        $value = $needle;
+        $normalizedValue = strtolower(trim($value));
+        foreach ($haystack as $hay) {
+            $regexResult = @preg_match($hay, $value);
+
+            if ($regexResult === 1) {
+                return true;
+            } elseif ($regexResult === false) {
+                // If $regexResult is false
+                // then that means that the $hay was not a valid regex string.
+                // Attempt to normalize the $value and $hay and compare that way.
+                $normalizedHay = strtolower(trim($hay));
+                if ($normalizedValue === $normalizedHay) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     *
+     */
+    protected function checkRequestValue(array $haystack, callable $needleFunction): self
+    {
+        if (empty($haystack)) {
+            return $this;
+        }
+
+        return $this->addCheck(function ($request) use ($haystack, $needleFunction) {
+            return static::matchesAny(
+                needle: call_user_func($needleFunction, $request),
+                haystack: $haystack,
+            );
+        });
+    }
+
+    /**
      * Adds a check function to the Router that will pass if a Request uses any
      * of the given HTTP methods.
      */
     public function hasMethod(string ...$inputs): self
+    {
+        return $this->checkRequestValue($inputs, fn($req) => $req->getMethod());
+    }
+
+    /**
+     *
+     */
+    public function hasScheme(string ...$inputs): self
+    {
+        return $this->checkRequestValue($inputs, fn($req) => $req->getUri()->getScheme());
+    }
+
+    /**
+     *
+     */
+    public function hasAuthority(string ...$inputs): self
+    {
+        return $this->checkRequestValue($inputs, fn($req) => $req->getUri()->getAuthority());
+    }
+
+    /**
+     *
+     */
+    public function hasUserInfo(string ...$inputs): self
+    {
+        return $this->checkRequestValue($inputs, fn($req) => $req->getUri()->getUserInfo());
+    }
+
+    /**
+     *
+     */
+    public function hasHost(string ...$inputs): self
+    {
+        return $this->checkRequestValue($inputs, fn($req) => $req->getUri()->getHost());
+    }
+
+    /**
+     *
+     */
+    public function hasPort(string ...$inputs): self
+    {
+        return $this->checkRequestValue($inputs, function ($request) {
+            $uri = $request->getUri();
+            $port = $uri->getPort();
+
+            if (!is_null($port)) {
+                return strval($port);
+            }
+
+            $scheme = $uri->getScheme();
+            if ($scheme === 'http') {
+                return '80';
+            }
+            if ($scheme === 'https') {
+                return '443';
+            }
+            return '';
+        });
+    }
+
+    /**
+     *
+     */
+    public function hasPath(string ...$inputs): self
+    {
+        return $this->checkRequestValue($inputs, fn($req) => $req->getUri()->getPath());
+    }
+
+    /**
+     *
+     */
+    public function hasQuery(string ...$inputs): self
+    {
+        return $this->checkRequestValue($inputs, fn($req) => $req->getUri()->getQuery());
+    }
+
+    /**
+     *
+     */
+    public function hasFragment(string ...$inputs): self
+    {
+        return $this->checkRequestValue($inputs, fn($req) => $req->getUri()->getFragment());
+    }
+
+    /**
+     *
+     */
+    public function hasHeader(string ...$inputs): self
     {
         if (empty($inputs)) {
             return $this;
         }
 
         return $this->addCheck(function ($request) use ($inputs) {
-            $needleMethod = strtolower(trim($request->getMethod()));
             foreach ($inputs as $input) {
-                $haystackMethod = strtolower(trim($input));
-                if ($needleMethod === $haystackMethod) {
+                if ($request->hasHeader($input)) {
                     return true;
                 }
             }
             return false;
+        });
+    }
+
+    /**
+     *
+     */
+    public function hasHeaderWithValue(string $header, string ...$values): self
+    {
+        if (empty($values)) {
+            return $this;
+        }
+
+        return $this->addCheck(function ($request) use ($header, $values) {
+            $headerValues = $request->getHeader($header);
+            $matches = array_intersect($headerValues, $values);
+            return !empty($matches);
+        });
+    }
+
+    /**
+     *
+     */
+    public function hasBody(): self
+    {
+        return $this->addCheck(function ($request) {
+            $body = $request->getBody();
+            return $body instanceof StreamInterface && $body->getSize();
+        });
+    }
+
+    /**
+     *
+     */
+    public function hasBodyLargerThan(int $bytes): self
+    {
+        // Normalize size
+        $bytes = max(0, $bytes);
+        return $this->addCheck(function ($request) use ($bytes) {
+            $body = $request->getBody();
+            return $body instanceof StreamInterface && $body->getSize() > $bytes;
+        });
+    }
+
+    /**
+     *
+     */
+    public function hasBodySmallerThan(int $bytes): self
+    {
+        // Normalize size
+        $bytes = max(0, $bytes);
+        return $this->addCheck(function ($request) use ($bytes) {
+            $body = $request->getBody();
+            return $body instanceof StreamInterface && $body->getSize() < $bytes;
         });
     }
 }

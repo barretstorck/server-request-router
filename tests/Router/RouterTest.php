@@ -1,6 +1,6 @@
 <?php
 
-namespace BarretStorck\ServerRequestRouter\Tests;
+namespace BarretStorck\ServerRequestRouter\Tests\Router;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -10,7 +10,7 @@ use GuzzleHttp\Psr7\Response;
 use Exception;
 
 /**
- *
+ * @testdox Router Basic Functionality
  */
 class RouterTest extends TestCase
 {
