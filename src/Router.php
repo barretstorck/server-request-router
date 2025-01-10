@@ -281,7 +281,23 @@ class Router implements MiddlewareInterface, RequestHandlerInterface
      */
     public function hasPort(string ...$inputs): self
     {
-        return $this->checkRequestValue($inputs, fn($req) => strval($req->getUri()->getPort()));
+        return $this->checkRequestValue($inputs, function ($request) {
+            $uri = $request->getUri();
+            $port = $uri->getPort();
+
+            if (!is_null($port)) {
+                return strval($port);
+            }
+
+            $scheme = $uri->getScheme();
+            if ($scheme === 'http') {
+                return '80';
+            }
+            if ($scheme === 'https') {
+                return '443';
+            }
+            return '';
+        });
     }
 
     /**
