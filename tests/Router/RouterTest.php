@@ -97,4 +97,30 @@ class RouterTest extends TestCase
             message: 'Unexpected Middlewares',
         );
     }
+
+    public function testRegexNamedMatchSetsAttribute(): void
+    {
+        // Given
+        $request = new ServerRequest(
+            method: 'GET',
+            uri: 'http://localhost/foo/bar/fizz/0451/buzz',
+        );
+
+        $router = Router::make()
+            ->branch()
+                ->hasPath('/\/foo\/bar\/fizz\/(?<id>[0-9]{4})\/buzz/i')
+                ->hasAttributeWithValue('id', '0451')
+                ->addMiddleware(new Response(100))
+            ->root()
+            ->addMiddleware(new Response(500));
+
+        // When
+        $response = $router->handle($request);
+
+        // Then
+        $this->assertEquals(
+            expected: 100,
+            actual: $response->getStatusCode(),
+        );
+    }
 }
