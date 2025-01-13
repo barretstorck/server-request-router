@@ -121,7 +121,7 @@ class Router implements MiddlewareInterface, RequestHandlerInterface
         foreach ($this->checks as $check) {
             // Call each check's function
             // with the request passed as a parameter
-            $result = call_user_func($check, $request);
+            $result = call_user_func_array($check, [&$request]);
 
             // If the function returned anything but a boolean "true"
             // then consider the check failed and return false to indicate
@@ -195,14 +195,31 @@ class Router implements MiddlewareInterface, RequestHandlerInterface
     /**
      *
      */
-    protected static function matchesAny(string $needle, array $haystack): bool
+    protected static function matchesAny(string $needle, array $haystack, ServerRequestInterface &$request): bool
     {
         $value = $needle;
         $normalizedValue = strtolower(trim($value));
         foreach ($haystack as $hay) {
-            $regexResult = @preg_match($hay, $value);
+            $regexResult = @preg_match($hay, $value, $matches);
 
             if ($regexResult === 1) {
+                // We have a regex match. Look for named matches and add them as
+                // attributes to the ServerRequest object.
+
+                // Get only the non-integer array keys. These should be the
+                // names specified in regex for the matches.
+                $keys = array_keys($matches);
+                $names = array_filter($keys, function ($var) {
+                    return is_string($var);
+                });
+
+                // For each named match that we found, fetch it's matched value
+                // and set it as an attribute on the request.
+                foreach ($names as $name) {
+                    $attribute = $matches[$name];
+                    $request = $request->withAttribute($name, $attribute);
+                }
+
                 return true;
             } elseif ($regexResult === false) {
                 // If $regexResult is false
@@ -227,10 +244,11 @@ class Router implements MiddlewareInterface, RequestHandlerInterface
             return $this;
         }
 
-        return $this->addCheck(function ($request) use ($haystack, $needleFunction) {
+        return $this->addCheck(function (&$request) use ($haystack, $needleFunction) {
             return static::matchesAny(
                 needle: call_user_func($needleFunction, $request),
                 haystack: $haystack,
+                request: $request,
             );
         });
     }
@@ -356,6 +374,40 @@ class Router implements MiddlewareInterface, RequestHandlerInterface
             $headerValues = $request->getHeader($header);
             $matches = array_intersect($headerValues, $values);
             return !empty($matches);
+        });
+    }
+
+    /**
+     *
+     */
+    public function hasAttribute(string ...$inputs): self
+    {
+        if (empty($inputs)) {
+            return $this;
+        }
+
+        return $this->addCheck(function ($request) use ($inputs) {
+            foreach ($inputs as $input) {
+                if (!is_null($request->getAttribute($input))) {
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
+
+    /**
+     *
+     */
+    public function hasAttributeWithValue(string $attribute, mixed ...$values): self
+    {
+        if (empty($values)) {
+            return $this;
+        }
+
+        return $this->addCheck(function ($request) use ($attribute, $values) {
+            $attributeValue = $request->getAttribute($attribute);
+            return in_array($attributeValue, $values);
         });
     }
 
