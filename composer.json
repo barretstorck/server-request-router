@@ -28,6 +28,9 @@
     "provide": {
         "psr/http-server-handler-implementation": "1.0"
     },
+    "suggest": {
+        "laminas/laminas-httphandlerrunner": "Emit PSR-7 responses"
+    },
     "autoload": {
         "psr-4": {
             "BarretStorck\\ServerRequestRouter\\": "src/"
