@@ -6,6 +6,14 @@ GID = $(shell id -g)
 
 .PHONEY: *
 
+help:
+	@echo "Available commands:"
+	@echo "  build   - Build the project using Composer."
+	@echo "  test    - Run tests with PHPUnit."
+	@echo "  lint    - Lint PHP code using PHP_CodeSniffer."
+	@echo "  format  - Format PHP code using PHP_CodeFixer."
+	@echo "  clean   - Clean up generated files."
+
 build:
 	docker run \
 		--rm \
